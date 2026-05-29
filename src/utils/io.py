@@ -12,7 +12,10 @@ from .helper import mkdir, suffix
 def load_image_rgb(image_path: str):
     if not osp.exists(image_path):
         raise FileNotFoundError(f"Image not found: {image_path}")
-    img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    # Read using numpy.fromfile to support Unicode paths on Windows
+    img = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise Exception(f"Failed to load image: {image_path}")
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
@@ -74,10 +77,12 @@ def load_img_online(obj, mode="bgr", **kwargs):
     max_dim = kwargs.get("max_dim", 1920)
     n = kwargs.get("n", 2)
     if isinstance(obj, str):
-        if mode.lower() == "gray":
-            img = cv2.imread(obj, cv2.IMREAD_GRAYSCALE)
-        else:
-            img = cv2.imread(obj, cv2.IMREAD_COLOR)
+        if not osp.exists(obj):
+            raise FileNotFoundError(f"Image not found: {obj}")
+        flags = cv2.IMREAD_GRAYSCALE if mode.lower() == "gray" else cv2.IMREAD_COLOR
+        img = cv2.imdecode(np.fromfile(obj, dtype=np.uint8), flags)
+        if img is None:
+            raise Exception(f"Failed to load image: {obj}")
     else:
         img = obj
 
@@ -115,3 +120,15 @@ def dump(wfp, obj):
         pickle.dump(obj, open(wfp, "wb"))
     else:
         raise Exception("Unknown type: {}".format(_suffix))
+
+
+def imwrite(path: str, img: np.ndarray, params=None) -> bool:
+    try:
+        ext = osp.splitext(path)[1]
+        result, nparr = cv2.imencode(ext, img, params)
+        if result:
+            nparr.tofile(path)
+            return True
+        return False
+    except Exception:
+        return cv2.imwrite(path, img, params)

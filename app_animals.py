@@ -189,7 +189,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
             with gr.TabItem("📁 Driving Pickle") as tab_video:
                 gr.Examples(
                     examples=data_examples_i2v_pickle,
-                    fn=gpu_wrapped_execute_video,
                     inputs=[
                         source_image_input,
                         driving_video_pickle_input,
@@ -198,14 +197,12 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         flag_remap_input,
                         flag_crop_driving_video_input,
                     ],
-                    outputs=[output_image, output_image_paste_back, output_video_i2v_gif],
                     examples_per_page=len(data_examples_i2v_pickle),
                     cache_examples=False,
                 )
             with gr.TabItem("🎞️ Driving Video") as tab_video:
                 gr.Examples(
                     examples=data_examples_i2v,
-                    fn=gpu_wrapped_execute_video,
                     inputs=[
                         source_image_input,
                         driving_video_input,
@@ -214,7 +211,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         flag_remap_input,
                         flag_crop_driving_video_input,
                     ],
-                    outputs=[output_image, output_image_paste_back, output_video_i2v_gif],
                     examples_per_page=len(data_examples_i2v),
                     cache_examples=False,
                 )

@@ -156,7 +156,7 @@ class LivePortraitPipelineAnimal(object):
 
         ######## animate ########
         I_p_lst = []
-        for i in track(range(n_frames), description='🚀Animating...', total=n_frames):
+        for i in track(range(n_frames), description='Animating...', total=n_frames):
 
             x_d_i_info = driving_template_dct['motion'][i]
             x_d_i_info = dct2device(x_d_i_info, device)
@@ -190,6 +190,8 @@ class LivePortraitPipelineAnimal(object):
                 I_p_pstbk = paste_back(I_p_i, crop_info['M_c2o'], img_rgb, mask_ori_float)
                 I_p_pstbk_lst.append(I_p_pstbk)
 
+        import time
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
         mkdir(args.output_dir)
         wfp_concat = None
         flag_driving_has_audio = (not flag_load_from_template) and has_audio_stream(args.driving)
@@ -197,31 +199,39 @@ class LivePortraitPipelineAnimal(object):
         ######### build the final concatenation result #########
         # driving frame | source image | generation
         frames_concatenated = concat_frames(driving_rgb_crop_256x256_lst, [img_crop_256x256], I_p_lst)
-        wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat.mp4')
-        images2video(frames_concatenated, wfp=wfp_concat, fps=output_fps)
+        wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}_concat.mp4')
 
         if flag_driving_has_audio:
-            # final result with concatenation
-            wfp_concat_with_audio = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat_with_audio.mp4')
+            wfp_concat_silent = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}_concat_silent.mp4')
+            images2video(frames_concatenated, wfp=wfp_concat_silent, fps=output_fps)
             audio_from_which_video = args.driving
-            add_audio_to_video(wfp_concat, audio_from_which_video, wfp_concat_with_audio)
-            os.replace(wfp_concat_with_audio, wfp_concat)
-            log(f"Replace {wfp_concat_with_audio} with {wfp_concat}")
+            add_audio_to_video(wfp_concat_silent, audio_from_which_video, wfp_concat)
+            try:
+                os.remove(wfp_concat_silent)
+            except Exception as e:
+                log(f"Failed to remove temp file {wfp_concat_silent}: {e}")
+        else:
+            images2video(frames_concatenated, wfp=wfp_concat, fps=output_fps)
 
         # save the animated result
-        wfp = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}.mp4')
-        if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
-            images2video(I_p_pstbk_lst, wfp=wfp, fps=output_fps)
-        else:
-            images2video(I_p_lst, wfp=wfp, fps=output_fps)
-
-        ######### build the final result #########
+        wfp = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}.mp4')
         if flag_driving_has_audio:
-            wfp_with_audio = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_with_audio.mp4')
+            wfp_silent = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}_silent.mp4')
+            if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
+                images2video(I_p_pstbk_lst, wfp=wfp_silent, fps=output_fps)
+            else:
+                images2video(I_p_lst, wfp=wfp_silent, fps=output_fps)
             audio_from_which_video = args.driving
-            add_audio_to_video(wfp, audio_from_which_video, wfp_with_audio)
-            os.replace(wfp_with_audio, wfp)
-            log(f"Replace {wfp_with_audio} with {wfp}")
+            add_audio_to_video(wfp_silent, audio_from_which_video, wfp)
+            try:
+                os.remove(wfp_silent)
+            except Exception as e:
+                log(f"Failed to remove temp file {wfp_silent}: {e}")
+        else:
+            if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
+                images2video(I_p_pstbk_lst, wfp=wfp, fps=output_fps)
+            else:
+                images2video(I_p_lst, wfp=wfp, fps=output_fps)
 
         # final log
         if wfp_template not in (None, ''):

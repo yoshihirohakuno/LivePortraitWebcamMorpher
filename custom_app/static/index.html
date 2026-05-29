@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LivePortrait - Webcam Morpher</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sparkle-icon">
+                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                </svg>
+                <h1>LivePortrait <span class="accent-text">Webcam Morpher</span></h1>
+            </div>
+            <p class="subtitle">静止画ポートレートに、ブラウザで撮影したウェブカメラの表情と動きをリアルに縫合・移植します。</p>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main class="dashboard">
+            <!-- Left Side: Inputs -->
+            <section class="panel-column">
+                <!-- Step 1: Upload Portrait Image -->
+                <div class="glass-card step-card" id="card-step-1">
+                    <div class="card-header">
+                        <div class="step-num">1</div>
+                        <h2>顔写真（静止画）の選択</h2>
+                    </div>
+                    <div class="upload-area" id="image-dropzone">
+                        <input type="file" id="image-input" accept="image/*" class="file-input">
+                        <div class="upload-placeholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="upload-icon">
+                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                                <circle cx="9" cy="9" r="2"/>
+                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                            </svg>
+                            <p class="main-instruction">ドラッグ＆ドロップ、またはファイルを選択</p>
+                            <p class="sub-instruction">正面を向いたクリアな顔写真が最適です</p>
+                        </div>
+                        <div class="preview-container hidden" id="image-preview-container">
+                            <img id="image-preview" src="" alt="Source Portrait">
+                            <button class="btn btn-secondary btn-sm remove-btn" id="remove-image-btn">画像を削除</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Record Webcam Driving Video -->
+                <div class="glass-card step-card" id="card-step-2">
+                    <div class="card-header">
+                        <div class="step-num">2</div>
+                        <h2>表情・動きの録画</h2>
+                    </div>
+                    <div class="webcam-area">
+                        <!-- Webcam View -->
+                        <div class="webcam-wrapper" id="webcam-viewport">
+                            <video id="webcam-video" autoplay playsinline muted></video>
+                            <div class="recording-indicator hidden" id="record-dot">
+                                <span class="dot"></span> RECORDING
+                            </div>
+                            <div class="timer-overlay hidden" id="timer-display">00:00</div>
+                            <div class="webcam-placeholder" id="webcam-inactive-placeholder">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cam-icon">
+                                    <path d="M23 7a2 2 0 0 0-2.45-1.45L16 7V5a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2l4.55 1.45A2 2 0 0 0 23 17V7Z"/>
+                                </svg>
+                                <p>カメラへのアクセスが必要です</p>
+                                <button class="btn btn-primary btn-sm" id="enable-camera-btn">カメラを有効にする</button>
+                            </div>
+                        </div>
+
+                        <!-- Recorded Video Preview -->
+                        <div class="webcam-wrapper hidden" id="recorded-preview-viewport">
+                            <video id="recorded-video" controls playsinline></video>
+                            <button class="btn btn-secondary btn-sm remove-btn" id="rerecord-btn">撮り直す</button>
+                        </div>
+
+                        <!-- Webcam Controls -->
+                        <div class="webcam-controls hidden" id="webcam-controls-container">
+                            <button class="btn btn-danger btn-pulse" id="record-btn">
+                                <span class="btn-icon"></span> 録画開始
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: Morph & Output -->
+            <section class="panel-column">
+                <div class="glass-card result-card">
+                    <div class="card-header">
+                        <div class="step-num">3</div>
+                        <h2>アニメーション生成</h2>
+                    </div>
+
+                    <!-- Processing View -->
+                    <div class="processing-container hidden" id="processing-view">
+                        <div class="spinner">
+                            <div class="double-bounce1"></div>
+                            <div class="double-bounce2"></div>
+                        </div>
+                        <h3 id="status-title">アニメーション処理中...</h3>
+                        <p id="status-desc">顔のランドマークを検出しています。これには数十秒かかる場合があります。</p>
+                        
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="progress-indicator"></div>
+                        </div>
+                        <div class="step-tracker">
+                            <span class="step-item active" id="step-1-lbl">1. 顔検出</span>
+                            <span class="step-item" id="step-2-lbl">2. 動き適用</span>
+                            <span class="step-item" id="step-3-lbl">3. 出力合成</span>
+                        </div>
+                    </div>
+
+                    <!-- Idle / Morph Trigger View -->
+                    <div class="idle-result-container" id="idle-view">
+                        <div class="action-prompt">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="action-icon">
+                                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                            </svg>
+                            <p>ステップ1で写真を選び、ステップ2で表情を録画して、モーフィングを開始してください。</p>
+                            <button class="btn btn-disabled" id="generate-btn" disabled>🚀 アニメーション生成</button>
+                        </div>
+                    </div>
+
+                    <!-- Result View -->
+                    <div class="result-video-container hidden" id="result-view">
+                        <div class="result-tabs">
+                            <button class="tab-btn active" id="tab-result">生成動画のみ</button>
+                            <button class="tab-btn" id="tab-compare">比較画面 (左右連結)</button>
+                        </div>
+                        
+                        <div class="video-container">
+                            <video id="final-video" autoplay loop controls playsinline></video>
+                        </div>
+
+                        <div class="result-actions">
+                            <a href="" id="download-btn" download="liveportrait_animated.mp4" class="btn btn-primary">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" x2="12" y1="15" y2="3"/>
+                                </svg>
+                                動画をダウンロード
+                            </a>
+                            <button class="btn btn-secondary" id="reset-all-btn">新しく作り直す</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+<script src="app.js"></script>
+</html>

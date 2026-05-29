@@ -167,7 +167,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                             cache_examples=False,
                         )
 
-                tab_selection = gr.Textbox(visible=False)
+                tab_selection = gr.Textbox(value="Image", visible=False)
                 tab_image.select(lambda: "Image", None, tab_selection)
                 tab_video.select(lambda: "Video", None, tab_selection)
             with gr.Accordion(open=True, label="Cropping Options for Source Image or Video"):
@@ -225,7 +225,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                             cache_examples=False,
                         )
 
-                v_tab_selection = gr.Textbox(visible=False)
+                v_tab_selection = gr.Textbox(value="Video", visible=False)
                 v_tab_video.select(lambda: "Video", None, v_tab_selection)
                 v_tab_image.select(lambda: "Image", None, v_tab_selection)
                 v_tab_pickle.select(lambda: "Pickle", None, v_tab_selection)
@@ -274,7 +274,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
             with gr.TabItem("🖼️ Portrait Animation"):
                 gr.Examples(
                     examples=data_examples_i2v,
-                    fn=gpu_wrapped_execute_video,
                     inputs=[
                         source_image_input,
                         driving_video_input,
@@ -283,14 +282,12 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         flag_remap_input,
                         flag_crop_driving_video_input,
                     ],
-                    outputs=[output_image, output_image_paste_back],
                     examples_per_page=len(data_examples_i2v),
                     cache_examples=False,
                 )
             with gr.TabItem("🎞️ Portrait Video Editing"):
                 gr.Examples(
                     examples=data_examples_v2v,
-                    fn=gpu_wrapped_execute_video,
                     inputs=[
                         source_video_input,
                         driving_video_input,
@@ -300,7 +297,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         flag_crop_driving_video_input,
                         driving_smooth_observation_variance,
                     ],
-                    outputs=[output_image, output_image_paste_back],
                     examples_per_page=len(data_examples_v2v),
                     cache_examples=False,
                 )
@@ -455,7 +451,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
             tab_selection,
             v_tab_selection,
         ],
-        outputs=[output_video_i2v, output_video_i2v, output_video_concat_i2v, output_video_concat_i2v, output_image_i2i, output_image_i2i, output_image_concat_i2i, output_image_concat_i2i],
+        outputs=[output_video_i2v, output_video_concat_i2v, output_image_i2i, output_image_concat_i2i],
         show_progress=True
     )
 

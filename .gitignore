@@ -32,3 +32,17 @@ LivePortrait_env/
 src/utils/dependencies/XPose/models/UniPose/ops/build
 src/utils/dependencies/XPose/models/UniPose/ops/dist
 src/utils/dependencies/XPose/models/UniPose/ops/MultiScaleDeformableAttention.egg-info
+
+# Virtual environments
+.venv/
+venv/
+
+# Logs
+*.log
+
+# Custom App transient files
+custom_app/temp/*
+!custom_app/temp/.gitkeep
+custom_app/static/outputs/*
+!custom_app/static/outputs/.gitkeep
+animations_test_utf8/

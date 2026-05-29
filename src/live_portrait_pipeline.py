@@ -20,7 +20,7 @@ from .utils.cropper import Cropper
 from .utils.camera import get_rotation_matrix
 from .utils.video import images2video, concat_frames, get_fps, add_audio_to_video, has_audio_stream
 from .utils.crop import prepare_paste_back, paste_back
-from .utils.io import load_image_rgb, load_video, resize_to_limit, dump, load
+from .utils.io import load_image_rgb, load_video, resize_to_limit, dump, load, imwrite
 from .utils.helper import mkdir, basename, dct2device, is_video, is_template, remove_suffix, is_image, is_square_video, calc_motion_multiplier
 from .utils.filter import smooth
 from .utils.rprint import rlog as log
@@ -270,7 +270,7 @@ class LivePortraitPipeline(object):
             log(f"The animated video consists of {n_frames} frames.")
         else:
             log(f"The output of image-driven portrait animation is an image.")
-        for i in track(range(n_frames), description='🚀Animating...', total=n_frames):
+        for i in track(range(n_frames), description='Animating...', total=n_frames):
             if flag_is_source_video:  # source video
                 x_s_info = source_template_dct['motion'][i]
                 x_s_info = dct2device(x_s_info, device)
@@ -449,6 +449,8 @@ class LivePortraitPipeline(object):
                     I_p_pstbk = paste_back(I_p_i, crop_info['M_c2o'], source_rgb_lst[0], mask_ori_float)
                 I_p_pstbk_lst.append(I_p_pstbk)
 
+        import time
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
         mkdir(args.output_dir)
         wfp_concat = None
         ######### build the final concatenation result #########
@@ -467,36 +469,44 @@ class LivePortraitPipeline(object):
             flag_source_has_audio = flag_is_source_video and has_audio_stream(args.source)
             flag_driving_has_audio = (not flag_load_from_template) and has_audio_stream(args.driving)
 
-            wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat.mp4')
+            wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}_concat.mp4')
 
             # NOTE: update output fps
             output_fps = source_fps if flag_is_source_video else output_fps
-            images2video(frames_concatenated, wfp=wfp_concat, fps=output_fps)
-
+            
             if flag_source_has_audio or flag_driving_has_audio:
-                # final result with concatenation
-                wfp_concat_with_audio = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat_with_audio.mp4')
+                wfp_concat_silent = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}_concat_silent.mp4')
+                images2video(frames_concatenated, wfp=wfp_concat_silent, fps=output_fps)
                 audio_from_which_video = args.driving if ((flag_driving_has_audio and args.audio_priority == 'driving') or (not flag_source_has_audio)) else args.source
                 log(f"Audio is selected from {audio_from_which_video}, concat mode")
-                add_audio_to_video(wfp_concat, audio_from_which_video, wfp_concat_with_audio)
-                os.replace(wfp_concat_with_audio, wfp_concat)
-                log(f"Replace {wfp_concat_with_audio} with {wfp_concat}")
+                add_audio_to_video(wfp_concat_silent, audio_from_which_video, wfp_concat)
+                try:
+                    os.remove(wfp_concat_silent)
+                except Exception as e:
+                    log(f"Failed to remove temp file {wfp_concat_silent}: {e}")
+            else:
+                images2video(frames_concatenated, wfp=wfp_concat, fps=output_fps)
 
             # save the animated result
-            wfp = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}.mp4')
-            if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
-                images2video(I_p_pstbk_lst, wfp=wfp, fps=output_fps)
-            else:
-                images2video(I_p_lst, wfp=wfp, fps=output_fps)
-
-            ######### build the final result #########
+            wfp = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}.mp4')
             if flag_source_has_audio or flag_driving_has_audio:
-                wfp_with_audio = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_with_audio.mp4')
+                wfp_silent = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}_silent.mp4')
+                if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
+                    images2video(I_p_pstbk_lst, wfp=wfp_silent, fps=output_fps)
+                else:
+                    images2video(I_p_lst, wfp=wfp_silent, fps=output_fps)
                 audio_from_which_video = args.driving if ((flag_driving_has_audio and args.audio_priority == 'driving') or (not flag_source_has_audio)) else args.source
                 log(f"Audio is selected from {audio_from_which_video}")
-                add_audio_to_video(wfp, audio_from_which_video, wfp_with_audio)
-                os.replace(wfp_with_audio, wfp)
-                log(f"Replace {wfp_with_audio} with {wfp}")
+                add_audio_to_video(wfp_silent, audio_from_which_video, wfp)
+                try:
+                    os.remove(wfp_silent)
+                except Exception as e:
+                    log(f"Failed to remove temp file {wfp_silent}: {e}")
+            else:
+                if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
+                    images2video(I_p_pstbk_lst, wfp=wfp, fps=output_fps)
+                else:
+                    images2video(I_p_lst, wfp=wfp, fps=output_fps)
 
             # final log
             if wfp_template not in (None, ''):
@@ -504,13 +514,13 @@ class LivePortraitPipeline(object):
             log(f'Animated video: {wfp}')
             log(f'Animated video with concat: {wfp_concat}')
         else:
-            wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat.jpg')
-            cv2.imwrite(wfp_concat, frames_concatenated[0][..., ::-1])
-            wfp = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}.jpg')
+            wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}_concat.jpg')
+            imwrite(wfp_concat, frames_concatenated[0][..., ::-1])
+            wfp = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_{timestamp}.jpg')
             if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
-                cv2.imwrite(wfp, I_p_pstbk_lst[0][..., ::-1])
+                imwrite(wfp, I_p_pstbk_lst[0][..., ::-1])
             else:
-                cv2.imwrite(wfp, frames_concatenated[0][..., ::-1])
+                imwrite(wfp, frames_concatenated[0][..., ::-1])
             # final log
             log(f'Animated image: {wfp}')
             log(f'Animated image with concat: {wfp_concat}')

@@ -221,9 +221,9 @@ class GradioPipeline(LivePortraitPipeline):
             output_path, output_path_concat = self.execute(self.args)
             gr.Info("Run successfully!", duration=2)
             if output_path.endswith(".jpg"):
-                return gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), output_path, gr.update(visible=True), output_path_concat, gr.update(visible=True)
+                return gr.update(value=None, visible=False), gr.update(value=None, visible=False), gr.update(value=output_path, visible=True), gr.update(value=output_path_concat, visible=True)
             else:
-                return output_path, gr.update(visible=True), output_path_concat, gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False)
+                return gr.update(value=output_path, visible=True), gr.update(value=output_path_concat, visible=True), gr.update(value=None, visible=False), gr.update(value=None, visible=False)
         else:
             raise gr.Error("Please upload the source portrait or source video, and driving video 🤗🤗🤗", duration=5)
 
@@ -452,35 +452,45 @@ class GradioPipeline(LivePortraitPipeline):
                     I_p_pstbk = paste_back(I_p_i, source_M_c2o_lst[i], source_rgb_lst[i], mask_ori_lst[i])
                     I_p_pstbk_lst.append(I_p_pstbk)
 
+        import time
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
         mkdir(self.args.output_dir)
         flag_source_has_audio = has_audio_stream(input_video)
 
         ######### build the final concatenation result #########
         # source frame | generation
         frames_concatenated = concat_frames(driving_image_lst=None, source_image_lst=img_crop_256x256_lst, I_p_lst=I_p_lst)
-        wfp_concat = osp.join(self.args.output_dir, f'{basename(input_video)}_retargeting_concat.mp4')
-        images2video(frames_concatenated, wfp=wfp_concat, fps=source_fps)
+        wfp_concat = osp.join(self.args.output_dir, f'{basename(input_video)}_{timestamp}_retargeting_concat.mp4')
 
         if flag_source_has_audio:
-            # final result with concatenation
-            wfp_concat_with_audio = osp.join(self.args.output_dir, f'{basename(input_video)}_retargeting_concat_with_audio.mp4')
-            add_audio_to_video(wfp_concat, input_video, wfp_concat_with_audio)
-            os.replace(wfp_concat_with_audio, wfp_concat)
-            log(f"Replace {wfp_concat_with_audio} with {wfp_concat}")
+            wfp_concat_silent = osp.join(self.args.output_dir, f'{basename(input_video)}_{timestamp}_retargeting_concat_silent.mp4')
+            images2video(frames_concatenated, wfp=wfp_concat_silent, fps=source_fps)
+            add_audio_to_video(wfp_concat_silent, input_video, wfp_concat)
+            try:
+                os.remove(wfp_concat_silent)
+            except Exception as e:
+                log(f"Failed to remove temp file {wfp_concat_silent}: {e}")
+        else:
+            images2video(frames_concatenated, wfp=wfp_concat, fps=source_fps)
 
         # save the animated result
-        wfp = osp.join(self.args.output_dir, f'{basename(input_video)}_retargeting.mp4')
-        if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
-            images2video(I_p_pstbk_lst, wfp=wfp, fps=source_fps)
-        else:
-            images2video(I_p_lst, wfp=wfp, fps=source_fps)
-
-        ######### build the final result #########
+        wfp = osp.join(self.args.output_dir, f'{basename(input_video)}_{timestamp}_retargeting.mp4')
         if flag_source_has_audio:
-            wfp_with_audio = osp.join(self.args.output_dir, f'{basename(input_video)}_retargeting_with_audio.mp4')
-            add_audio_to_video(wfp, input_video, wfp_with_audio)
-            os.replace(wfp_with_audio, wfp)
-            log(f"Replace {wfp_with_audio} with {wfp}")
+            wfp_silent = osp.join(self.args.output_dir, f'{basename(input_video)}_{timestamp}_retargeting_silent.mp4')
+            if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
+                images2video(I_p_pstbk_lst, wfp=wfp_silent, fps=source_fps)
+            else:
+                images2video(I_p_lst, wfp=wfp_silent, fps=source_fps)
+            add_audio_to_video(wfp_silent, input_video, wfp)
+            try:
+                os.remove(wfp_silent)
+            except Exception as e:
+                log(f"Failed to remove temp file {wfp_silent}: {e}")
+        else:
+            if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
+                images2video(I_p_pstbk_lst, wfp=wfp, fps=source_fps)
+            else:
+                images2video(I_p_lst, wfp=wfp, fps=source_fps)
         gr.Info("Run successfully!", duration=2)
         return wfp_concat, wfp
 
